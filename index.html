@@ -548,16 +548,20 @@ function onFontChange() {
   document.getElementById('font-preview').style.fontFamily = v;
 }
 
+let customFontData = null; // base64 data URL de la police
+
 function loadCustomFont(input) {
   const file = input.files[0]; if(!file) return;
   const name = file.name.replace(/\.[^.]+$/,'');
   const reader = new FileReader();
   reader.onload = e => {
-    const ff = new FontFace(name, e.target.result);
+    const dataUrl = e.target.result; // ex: data:font/ttf;base64,AAAA...
+    // Charge dans le document
+    const ff = new FontFace(name, dataUrl);
     ff.load().then(f => {
       document.fonts.add(f);
       customFontFamily = `'${name}',sans-serif`;
-      // Add to select or update
+      customFontData   = dataUrl; // ← stocke en base64 pour l'envoi
       const sel = document.getElementById('font-select');
       let opt = sel.querySelector('[data-custom]');
       if(!opt){ opt=document.createElement('option'); opt.setAttribute('data-custom','1'); sel.insertBefore(opt,sel.firstChild); }
@@ -569,12 +573,13 @@ function loadCustomFont(input) {
       document.getElementById('font-upload-name').classList.add('loaded');
     }).catch(()=>{ alert('Impossible de charger cette police.'); });
   };
-  reader.readAsArrayBuffer(file);
+  reader.readAsDataURL(file); // ← DataURL au lieu de ArrayBuffer
   input.value='';
 }
 
 function clearCustomFont() {
   customFontFamily = null;
+  customFontData   = null;
   document.getElementById('font-upload-name').textContent = 'Aucune police chargée';
   document.getElementById('font-upload-name').classList.remove('loaded');
   const sel = document.getElementById('font-select');
@@ -618,6 +623,7 @@ function clearLogo(side) {
 function getAppearance() {
   return {
     fontFamily:   document.getElementById('font-select').value,
+    fontData:     customFontData || null, // base64 de la police perso
     logoLeft:     logos.left  || null,
     logoRight:    logos.right || null,
     logoLeftH:    parseInt(document.getElementById('logo-left-h').value)  || 26,
