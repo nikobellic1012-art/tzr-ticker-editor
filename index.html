@@ -338,30 +338,100 @@ html,body { min-height:100%; font-family:'Rajdhani',sans-serif; background:var(-
 // ════════════════════════════════════════
 const ABLY_KEY     = 'YWBqmQ.FeXoQA:-bYCNUhoWm9ZRzQ2yB82S_DGhRrTwsBY4NFvMIm3qLA';
 const CHANNEL_NAME = 'tzr-ticker';
-let ablyReady = false, ablyChannel = null;
+const SAVE_KEY     = 'tzr-ticker-state';
+let ablyReady = false, ablyChannel = null, ablyClient = null;
 
 function initAbly() {
   try {
-    const client = new Ably.Realtime({ key: ABLY_KEY });
-    ablyChannel = client.channels.get(CHANNEL_NAME);
-    client.connection.on('connected',    () => { ablyReady=true;  setStatus('on','Connecté ✓'); });
-    client.connection.on('disconnected', () => { ablyReady=false; setStatus('off','Déconnecté'); });
-    client.connection.on('failed',       () => { ablyReady=false; setStatus('err','Erreur'); });
-    client.connection.on('connecting',   () => {                  setStatus('off','Connexion…'); });
+    ablyClient  = new Ably.Realtime({ key: ABLY_KEY });
+    ablyChannel = ablyClient.channels.get(CHANNEL_NAME);
+    ablyClient.connection.on('connected',    () => { ablyReady=true;  setStatus('on','Connecté ✓'); loadState(); });
+    ablyClient.connection.on('disconnected', () => { ablyReady=false; setStatus('off','Déconnecté'); });
+    ablyClient.connection.on('failed',       () => { ablyReady=false; setStatus('err','Erreur'); });
+    ablyClient.connection.on('connecting',   () => {                  setStatus('off','Chargement…'); });
   } catch(e) { setStatus('err','Erreur init'); }
 }
+
 function setStatus(s,t) {
   document.getElementById('status-pill').className='status-pill '+s;
   document.getElementById('status-text').textContent=t;
 }
+
+// ── SAUVEGARDE CLOUD ─────────────────────────────────
+async function saveState(payload) {
+  try {
+    const ch = ablyClient.channels.get(SAVE_KEY);
+    await ch.publish('state', payload);
+  } catch(e) { /* silencieux */ }
+}
+
+async function loadState() {
+  try {
+    setSendStatus('Chargement…', 'sending');
+    const ch = ablyClient.channels.get('[?rewind=1]' + SAVE_KEY);
+    let loaded = false;
+    ch.subscribe('state', msg => {
+      if (loaded) return;
+      loaded = true;
+      ch.unsubscribe();
+      const data = msg.data;
+      if (!data) { setSendStatus('Nouveau classement', ''); return; }
+      // Restaure pilotes
+      document.getElementById('pilots-list').innerHTML = '';
+      pilotCount = 0;
+      if (Array.isArray(data.pilots)) {
+        data.pilots.forEach(p => addPilot(p.pos, p.name, p.tri, p.tyre, p.active));
+      }
+      // Restaure apparence
+      if (data.appearance) {
+        const app = data.appearance;
+        if (app.fontFamily) {
+          const sel = document.getElementById('font-select');
+          let found = false;
+          for (const opt of sel.options) { if (opt.value===app.fontFamily) { sel.value=app.fontFamily; found=true; break; } }
+          if (!found) {
+            const opt = document.createElement('option');
+            opt.value=app.fontFamily; opt.textContent=app.fontFamily;
+            sel.insertBefore(opt, sel.firstChild); sel.value=app.fontFamily;
+          }
+          document.getElementById('font-preview').style.fontFamily = app.fontFamily;
+        }
+        if (app.logoLeft) {
+          logos.left = app.logoLeft;
+          const thumb=document.getElementById('logo-left-thumb'), slot=document.getElementById('logo-left-slot');
+          thumb.src=app.logoLeft; slot.classList.add('has-logo'); slot.querySelector('.logo-label').textContent='Logo chargé';
+          document.getElementById('logo-left-h').value=app.logoLeftH||26;
+          document.getElementById('logo-left-hval').textContent=(app.logoLeftH||26)+'px';
+        }
+        if (app.logoRight) {
+          logos.right = app.logoRight;
+          const thumb=document.getElementById('logo-right-thumb'), slot=document.getElementById('logo-right-slot');
+          thumb.src=app.logoRight; slot.classList.add('has-logo'); slot.querySelector('.logo-label').textContent='Logo chargé';
+          document.getElementById('logo-right-h').value=app.logoRightH||26;
+          document.getElementById('logo-right-hval').textContent=(app.logoRightH||26)+'px';
+        }
+      }
+      refreshPosGrid();
+      setSendStatus('✓ État restauré — ' + new Date().toLocaleTimeString('fr-FR'), 'ok');
+    });
+    // Timeout : si pas de données après 3s → nouveau classement
+    setTimeout(() => {
+      if (!loaded) { loaded=true; ch.unsubscribe(); setSendStatus('Nouveau classement', ''); }
+    }, 3000);
+  } catch(e) { setSendStatus('—', ''); }
+}
+
 async function sendNow() {
   if (!ablyReady) { setSendStatus('Non connecté','err'); return; }
   setSendStatus('Envoi…','sending');
   try {
-    await ablyChannel.publish('update', { pilots:getPilots(), appearance:getAppearance(), ts:Date.now() });
-    setSendStatus('✓ Envoyé — '+new Date().toLocaleTimeString('fr-FR'),'ok');
+    const payload = { pilots:getPilots(), appearance:getAppearance(), ts:Date.now() };
+    await ablyChannel.publish('update', payload);
+    await saveState(payload);
+    setSendStatus('✓ Envoyé & sauvegardé — '+new Date().toLocaleTimeString('fr-FR'),'ok');
   } catch(e) { setSendStatus('✗ '+e.message,'err'); }
 }
+
 function setSendStatus(msg,state) {
   const el=document.getElementById('send-status');
   el.textContent=msg; el.className='send-status '+(state||'');
@@ -614,11 +684,8 @@ document.addEventListener('keydown',e=>{
 });
 
 // ════════════════════════════════════════
-//  BOOT
+//  BOOT — pas de pilotes par défaut, on charge depuis le cloud
 // ════════════════════════════════════════
-[{pos:'1',name:'ZPR_Ganjy',tri:'ZPR',tyre:'S'},{pos:'2',name:'TZR_Tornade',tri:'TZR',tyre:'M'},{pos:'3',name:'Itibou_Racing',tri:'ITB',tyre:'H'}]
-  .forEach(p=>addPilot(p.pos,p.name,p.tri,p.tyre,true));
-refreshPosGrid();
 initAbly();
 </script>
 </body>
