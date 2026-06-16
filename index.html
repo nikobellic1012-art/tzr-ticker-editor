@@ -153,6 +153,24 @@ html,body { min-height:100%; font-family:'Rajdhani',sans-serif; background:var(-
 .send-status.err     { color:#ff6060; }
 .send-status.sending { color:var(--gold); }
 
+/* ── MINI CLASSEMENT LIVE ── */
+.mini-classement { margin-top:14px; background:var(--card); border:1px solid var(--border); border-radius:var(--r); overflow:hidden; }
+.mini-classement-header { display:flex; align-items:center; gap:8px; padding:8px 12px; background:rgba(245,200,66,0.07); border-bottom:1px solid var(--border); }
+.mini-classement-header span { font-size:10px; font-weight:700; color:var(--gold); text-transform:uppercase; letter-spacing:1.2px; }
+.mini-dot { width:6px; height:6px; border-radius:50%; background:var(--gold); animation:blink 1.2s infinite; }
+.mini-list { padding:6px 8px; display:flex; flex-direction:column; gap:3px; min-height:32px; }
+.mini-row { display:flex; align-items:center; gap:8px; padding:4px 6px; border-radius:5px; transition:background 0.15s; }
+.mini-row:hover { background:rgba(255,255,255,0.04); }
+.mini-pos  { font-family:"Bebas Neue",cursive; font-size:15px; min-width:30px; text-align:center; line-height:1; }
+.mini-pos.normal { color:var(--gold); }
+.mini-pos.dnf    { color:#ff6060; }
+.mini-pos.dsq    { color:#ff9900; }
+.mini-pos.dns    { color:#888; }
+.mini-tyre { width:18px; height:18px; border-radius:50%; font-size:8px; font-weight:bold; display:inline-flex; align-items:center; justify-content:center; border:2px solid transparent; flex-shrink:0; }
+.mini-name { font-size:13px; font-weight:700; color:var(--text); letter-spacing:0.5px; flex:1; }
+.mini-tri  { font-size:10px; color:var(--muted); }
+.mini-empty { font-size:11px; color:var(--muted); padding:8px 6px; font-style:italic; }
+
 /* ── INFO BOX ── */
 .info-box { padding:10px 14px; border-radius:var(--r); background:rgba(245,200,66,0.06); border:1px solid rgba(245,200,66,0.15); margin-top:10px; }
 .info-box p { font-size:11px; color:var(--muted); line-height:1.6; }
@@ -205,7 +223,16 @@ html,body { min-height:100%; font-family:'Rajdhani',sans-serif; background:var(-
   <div class="btn-row">
     <button class="btn btn-sm" onclick="openAddModal()" style="flex:1">+ Ajouter pilote</button>
   </div>
-  <div class="info-box" style="margin-top:14px">
+  <div class="mini-classement" id="mini-classement">
+    <div class="mini-classement-header">
+      <div class="mini-dot"></div>
+      <span>Classement en direct</span>
+    </div>
+    <div class="mini-list" id="mini-list">
+      <span class="mini-empty">Aucun pilote actif</span>
+    </div>
+  </div>
+  <div class="info-box" style="margin-top:10px">
     <p>💡 Clique sur <strong>Envoyer</strong> pour mettre à jour le ticker OBS instantanément.</p>
   </div>
 </div>
@@ -389,6 +416,11 @@ html,body { min-height:100%; font-family:'Rajdhani',sans-serif; background:var(-
 <div class="send-bar">
   <div class="send-inner">
     <div class="send-status" id="send-status">—</div>
+    <button class="btn btn-sm" onclick="exportJSON()" title="Exporter tout en JSON">⬇ JSON</button>
+    <label class="btn btn-sm" title="Importer depuis un JSON" style="cursor:pointer">
+      ⬆ JSON
+      <input type="file" id="json-import-file" accept=".json" onchange="importJSON(this)" style="display:none">
+    </label>
     <button class="btn btn-gold" onclick="sendNow()">📡 Envoyer</button>
   </div>
 </div>
@@ -571,9 +603,33 @@ function addPilot(pos='1',name='',tri='',tyre='S',active=true) {
   refreshPosGrid();
 }
 function onPosChange(sel) {
-  const v=sel.value;
-  sel.className='pos-sel'+(posClass(v)?' '+posClass(v):'');
-  // Auto-refresh pos grid in real-time regardless of active tab
+  const v = sel.value;
+  // Si la position choisie est déjà prise par un autre pilote ACTIF, on la lui retire
+  for (const row of document.querySelectorAll('#pilots-list .pilot-row')) {
+    const otherSel = row.querySelector('.pos-sel');
+    const otherActive = row.querySelector('.toggle-btn').classList.contains('on');
+    if (otherSel && otherSel !== sel && otherSel.value === v && otherActive) {
+      // On libère l'ancien : on lui donne la première position numérique libre
+      const allTaken = new Set(
+        Array.from(document.querySelectorAll('#pilots-list .pilot-row .pos-sel'))
+          .filter(s => s !== otherSel)
+          .map(s => s.value)
+      );
+      let newPos = null;
+      for (const candidate of ALL_POS) {
+        if (!allTaken.has(candidate)) { newPos = candidate; break; }
+      }
+      if (newPos) {
+        otherSel.value = newPos;
+        otherSel.className = 'pos-sel' + (posClass(newPos) ? ' ' + posClass(newPos) : '');
+        // Flash visuel sur la ligne déplacée
+        const otherRow = otherSel.closest('.pilot-row');
+        otherRow.style.borderColor = '#ff9900';
+        setTimeout(() => otherRow.style.borderColor = '', 1000);
+      }
+    }
+  }
+  sel.className = 'pos-sel' + (posClass(v) ? ' ' + posClass(v) : '');
   refreshPosGrid();
 }
 function toggleActive(btn) {
@@ -588,7 +644,7 @@ function getPilots() {
     tri:   row.querySelector('.tri-inp').value,
     tyre:  row.querySelector('.tyre-sel').value,
     active:row.querySelector('.toggle-btn').classList.contains('on'),
-  }));
+  })).filter(p => p.pos !== '—'); // exclure les pilotes sans position assignée
 }
 function clearPilots() { document.getElementById('pilots-list').innerHTML=''; pilotCount=0; refreshPosGrid(); }
 function importBulk() {
@@ -613,6 +669,8 @@ function getPilotAtPos(v) {
     if(row.querySelector('.pos-sel').value===v) return row.querySelector('.name-inp').value||null;
   return null;
 }
+const TC_TYRE = { S:{bg:'#c0392b',txt:'#fff',bd:'#e74c3c'}, M:{bg:'#e67e00',txt:'#fff',bd:'#f39c12'}, H:{bg:'#dfe6e9',txt:'#222',bd:'#b2bec3'}, I:{bg:'#27ae60',txt:'#fff',bd:'#2ecc71'}, W:{bg:'#2980b9',txt:'#fff',bd:'#3498db'} };
+
 function refreshPosGrid() {
   document.getElementById('pos-grid').innerHTML=POS_VALUES.map(v=>{
     const p=getPilotAtPos(v);
@@ -623,10 +681,38 @@ function refreshPosGrid() {
     return `<div class="pos-btn ${pc}${p?' used':''}" ${p?`data-pilot="${esc(p)}"`:''}  onclick="clickPos('${v}')">${v}</div>`;
   }).join('');
   const pilots=getPilots().filter(p=>p.active&&p.name.trim());
+
+  // Résumé onglet Positions
   const summary=document.getElementById('pos-summary');
   summary.innerHTML=pilots.length
     ? pilots.map(p=>`<div class="pos-pilot-badge"><span class="p-pos${posClass(p.pos)?' '+posClass(p.pos):''}">${p.pos}</span><span>${esc(p.name)}</span></div>`).join('')
     : '<span style="font-size:11px;color:var(--muted)">Aucun pilote actif</span>';
+
+  // Mini-classement dans l'onglet Pilotes
+  const miniList = document.getElementById('mini-list');
+  if (!miniList) return;
+  // Trier : positions numériques d'abord, puis DNF/DSQ/DNS
+  const sorted = [...pilots].sort((a,b) => {
+    const na = parseInt(a.pos), nb = parseInt(b.pos);
+    const aNum = !isNaN(na), bNum = !isNaN(nb);
+    if (aNum && bNum) return na - nb;
+    if (aNum) return -1;
+    if (bNum) return  1;
+    return a.pos.localeCompare(b.pos);
+  });
+  if (!sorted.length) {
+    miniList.innerHTML = '<span class="mini-empty">Aucun pilote actif</span>';
+    return;
+  }
+  miniList.innerHTML = sorted.map(p => {
+    const pc  = posClass(p.pos);
+    const tc  = TC_TYRE[p.tyre] || { bg:'#888', txt:'#fff', bd:'#aaa' };
+    return `<div class="mini-row">
+      <span class="mini-pos ${pc||'normal'}">${esc(p.pos)}</span>
+      <span class="mini-tyre" style="background:${tc.bg};color:${tc.txt};border-color:${tc.bd}">${p.tyre}</span>
+      <span class="mini-name">${esc(p.name)}<span class="mini-tri"> ${esc(p.tri||'')} </span></span>
+    </div>`;
+  }).join('');
 }
 
 // ════════════════════════════════════════
@@ -798,6 +884,127 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Enter'&&document.getElementById('modal-overlay').classList.contains('open')) confirmModal();
   if(e.key==='Escape') closeModal();
 });
+
+// ════════════════════════════════════════
+//  IMPORT / EXPORT JSON
+// ════════════════════════════════════════
+function exportJSON() {
+  const data = {
+    exportedAt: new Date().toISOString(),
+    pilots:     getPilots(),
+    appearance: {
+      fontFamily:     document.getElementById('font-select').value,
+      tickerFontSize: parseInt(document.getElementById('ticker-font-size').value) || 14,
+      tickerPosSize:  parseInt(document.getElementById('ticker-pos-size').value)  || 16,
+      logoLeftH:      parseInt(document.getElementById('logo-left-h').value)   || 26,
+      logoLeft2H:     parseInt(document.getElementById('logo-left2-h').value)  || 26,
+      logoRightH:     parseInt(document.getElementById('logo-right-h').value)  || 26,
+      logoRight2H:    parseInt(document.getElementById('logo-right2-h').value) || 26,
+      // Logos en base64 inclus
+      logoLeft:       logos.left   || null,
+      logoLeft2:      logos.left2  || null,
+      logoRight:      logos.right  || null,
+      logoRight2:     logos.right2 || null,
+      // Police perso
+      fontData:       customFontData || null,
+    }
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  const ts   = new Date().toISOString().slice(0,16).replace('T','_').replace(':','-');
+  a.href     = url;
+  a.download = 'classement_' + ts + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  setSendStatus('✓ Export JSON réussi', 'ok');
+}
+
+function importJSON(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+
+      // ── Pilotes ──
+      if (Array.isArray(data.pilots)) {
+        document.getElementById('pilots-list').innerHTML = '';
+        pilotCount = 0;
+        data.pilots.forEach(p => addPilot(p.pos, p.name, p.tri, p.tyre, p.active !== false));
+      }
+
+      // ── Apparence ──
+      const app = data.appearance;
+      if (app) {
+        // Police
+        if (app.fontFamily) {
+          const sel = document.getElementById('font-select');
+          let found = false;
+          for (const opt of sel.options) { if (opt.value === app.fontFamily) { sel.value = app.fontFamily; found = true; break; } }
+          if (!found) {
+            const opt = document.createElement('option');
+            opt.value = app.fontFamily; opt.textContent = app.fontFamily;
+            sel.insertBefore(opt, sel.firstChild); sel.value = app.fontFamily;
+          }
+          document.getElementById('font-preview').style.fontFamily = app.fontFamily;
+        }
+        // Police perso base64
+        if (app.fontData) {
+          const nameMatch = (app.fontFamily || '').match(/['"]([^'"]+)['"/]/);
+          const fontName  = nameMatch ? nameMatch[1] : 'CustomFont';
+          const ff = new FontFace(fontName, app.fontData);
+          ff.load().then(f => {
+            document.fonts.add(f);
+            customFontFamily = app.fontFamily;
+            customFontData   = app.fontData;
+            document.getElementById('font-upload-name').textContent = fontName;
+            document.getElementById('font-upload-name').classList.add('loaded');
+          }).catch(() => {});
+        }
+        // Tailles ticker
+        if (app.tickerFontSize) {
+          const el = document.getElementById('ticker-font-size');
+          el.value = app.tickerFontSize;
+          document.getElementById('ticker-font-size-val').textContent = app.tickerFontSize + 'px';
+        }
+        if (app.tickerPosSize) {
+          const el = document.getElementById('ticker-pos-size');
+          el.value = app.tickerPosSize;
+          document.getElementById('ticker-pos-size-val').textContent = app.tickerPosSize + 'px';
+        }
+        // Logos
+        ['left','left2','right','right2'].forEach(side => {
+          const key = 'logo' + side.charAt(0).toUpperCase() + side.slice(1);
+          if (app[key]) {
+            logos[side] = app[key];
+            const thumb = document.getElementById('logo-'+side+'-thumb');
+            const slot  = document.getElementById('logo-'+side+'-slot');
+            if (thumb && slot) {
+              thumb.src = app[key];
+              slot.classList.add('has-logo');
+              slot.querySelector('.logo-label').textContent = 'Logo importé';
+            }
+          }
+          const hKey = key + 'H';
+          if (app[hKey]) {
+            const rangeEl = document.getElementById('logo-'+side+'-h');
+            const valEl   = document.getElementById('logo-'+side+'-hval');
+            if (rangeEl) { rangeEl.value = app[hKey]; }
+            if (valEl)   { valEl.textContent = app[hKey] + 'px'; }
+          }
+        });
+      }
+
+      refreshPosGrid();
+      setSendStatus('✓ Import JSON réussi — ' + (data.pilots ? data.pilots.length : 0) + ' pilote(s)', 'ok');
+    } catch(err) {
+      setSendStatus('✗ Fichier JSON invalide : ' + err.message, 'err');
+    }
+  };
+  reader.readAsText(file);
+  input.value = ''; // reset so same file can be re-imported
+}
 
 // ════════════════════════════════════════
 //  BOOT — pas de pilotes par défaut, on charge depuis le cloud
