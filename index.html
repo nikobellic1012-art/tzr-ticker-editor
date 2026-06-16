@@ -38,6 +38,10 @@ html,body { min-height:100%; font-family:'Rajdhani',sans-serif; background:var(-
 :root {
   --tab-height: 44px;
   --tab-font-size: 10px;
+  --pos-color-normal: #f5c842;
+  --pos-color-dnf: #ff6060;
+  --pos-color-dsq: #ff9900;
+  --pos-color-dns: #888888;
 }
 .tabs-bar { display:flex; background:#0a0f1a; border-bottom:1px solid var(--border); position:sticky; top:54px; z-index:15; }
 .tab { flex:1; padding:0 8px; height:var(--tab-height); display:flex; align-items:center; justify-content:center; text-align:center; cursor:pointer; font-size:var(--tab-font-size); font-weight:700; color:var(--muted); border-bottom:2px solid transparent; transition:all 0.2s; letter-spacing:0.8px; text-transform:uppercase; user-select:none; }
@@ -66,10 +70,10 @@ html,body { min-height:100%; font-family:'Rajdhani',sans-serif; background:var(-
 .pilot-row input:focus { border-color:var(--border-gold); }
 .pilot-row select { font-size:12px; font-family:'Rajdhani',sans-serif; padding:5px 4px; border:1px solid var(--border); border-radius:var(--r); background:var(--input); color:var(--text); outline:none; width:100%; }
 .pilot-row select option { background:#1a1f2e; }
-.pilot-row select.pos-sel { font-family:'Bebas Neue',cursive; font-size:15px; color:var(--gold); text-align:center; }
-.pilot-row select.pos-sel.dnf { color:#ff6060; }
-.pilot-row select.pos-sel.dsq { color:#ff9900; }
-.pilot-row select.pos-sel.dns { color:#888; }
+.pilot-row select.pos-sel { font-family:'Bebas Neue',cursive; font-size:15px; color:var(--pos-color-normal); text-align:center; }
+.pilot-row select.pos-sel.dnf { color:var(--pos-color-dnf); }
+.pilot-row select.pos-sel.dsq { color:var(--pos-color-dsq); }
+.pilot-row select.pos-sel.dns { color:var(--pos-color-dns); }
 .toggle-btn { width:26px; height:26px; border-radius:50%; border:1px solid; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:12px; transition:all 0.15s; background:none; padding:0; }
 .toggle-btn.on  { background:rgba(50,200,80,0.15);  border-color:rgba(50,200,80,0.3);  color:#50e080; }
 .toggle-btn.off { background:rgba(100,100,100,0.1); border-color:rgba(100,100,100,0.2);color:#555; }
@@ -93,10 +97,10 @@ html,body { min-height:100%; font-family:'Rajdhani',sans-serif; background:var(-
 .pos-btn.dns:hover { border-color:rgba(136,136,136,0.4); background:rgba(136,136,136,0.08); }
 .pos-btn.dns.used { background:rgba(136,136,136,0.1); border-color:rgba(136,136,136,0.4); }
 .pos-pilot-badge { display:inline-flex; align-items:center; gap:8px; padding:7px 12px; background:var(--card); border:1px solid var(--border); border-radius:var(--r); margin:4px; font-size:12px; font-weight:700; }
-.pos-pilot-badge .p-pos { font-family:'Bebas Neue',cursive; font-size:15px; color:var(--gold); min-width:26px; }
-.pos-pilot-badge .p-pos.dnf { color:#ff6060; }
-.pos-pilot-badge .p-pos.dsq { color:#ff9900; }
-.pos-pilot-badge .p-pos.dns { color:#888; }
+.pos-pilot-badge .p-pos { font-family:'Bebas Neue',cursive; font-size:15px; color:var(--pos-color-normal); min-width:26px; }
+.pos-pilot-badge .p-pos.dnf { color:var(--pos-color-dnf); }
+.pos-pilot-badge .p-pos.dsq { color:var(--pos-color-dsq); }
+.pos-pilot-badge .p-pos.dns { color:var(--pos-color-dns); }
 
 /* ── APPARENCE TAB ── */
 .app-card { background:var(--card); border:1px solid var(--border); border-radius:var(--r); padding:14px; margin-bottom:12px; }
@@ -162,10 +166,10 @@ html,body { min-height:100%; font-family:'Rajdhani',sans-serif; background:var(-
 .mini-row { display:flex; align-items:center; gap:8px; padding:4px 6px; border-radius:5px; transition:background 0.15s; }
 .mini-row:hover { background:rgba(255,255,255,0.04); }
 .mini-pos  { font-family:"Bebas Neue",cursive; font-size:15px; min-width:30px; text-align:center; line-height:1; }
-.mini-pos.normal { color:var(--gold); }
-.mini-pos.dnf    { color:#ff6060; }
-.mini-pos.dsq    { color:#ff9900; }
-.mini-pos.dns    { color:#888; }
+.mini-pos.normal { color:var(--pos-color-normal); }
+.mini-pos.dnf    { color:var(--pos-color-dnf); }
+.mini-pos.dsq    { color:var(--pos-color-dsq); }
+.mini-pos.dns    { color:var(--pos-color-dns); }
 .mini-tyre { width:18px; height:18px; border-radius:50%; font-size:8px; font-weight:bold; display:inline-flex; align-items:center; justify-content:center; border:2px solid transparent; flex-shrink:0; }
 .mini-name { font-size:13px; font-weight:700; color:var(--text); letter-spacing:0.5px; flex:1; }
 .mini-tri  { font-size:10px; color:var(--muted); }
@@ -253,6 +257,41 @@ html,body { min-height:100%; font-family:'Rajdhani',sans-serif; background:var(-
 <!-- ══════════ TAB : APPARENCE ══════════ -->
 <div class="tab-content" id="tab-apparence">
 <div class="page">
+
+  <!-- COULEUR DES POSITIONS -->
+  <div class="app-card">
+    <div class="app-card-title">🎨 Couleur des positions</div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start">
+      <div class="field" style="flex:1;min-width:120px">
+        <label>Couleur positions (1–15)</label>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
+          <input type="color" id="pos-color-normal" value="#f5c842" oninput="onPosColorChange()" style="width:44px;height:36px;border:none;border-radius:6px;cursor:pointer;background:none;padding:0">
+          <span style="font-family:'Bebas Neue',cursive;font-size:22px" id="pos-color-preview">1 · 3 · 7</span>
+        </div>
+      </div>
+      <div class="field" style="flex:1;min-width:120px">
+        <label>Couleur DNF</label>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
+          <input type="color" id="pos-color-dnf" value="#ff6060" oninput="onPosColorChange()" style="width:44px;height:36px;border:none;border-radius:6px;cursor:pointer;background:none;padding:0">
+          <span style="font-family:'Bebas Neue',cursive;font-size:22px;color:#ff6060" id="pos-color-dnf-preview">DNF</span>
+        </div>
+      </div>
+      <div class="field" style="flex:1;min-width:120px">
+        <label>Couleur DSQ</label>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
+          <input type="color" id="pos-color-dsq" value="#ff9900" oninput="onPosColorChange()" style="width:44px;height:36px;border:none;border-radius:6px;cursor:pointer;background:none;padding:0">
+          <span style="font-family:'Bebas Neue',cursive;font-size:22px;color:#ff9900" id="pos-color-dsq-preview">DSQ</span>
+        </div>
+      </div>
+      <div class="field" style="flex:1;min-width:120px">
+        <label>Couleur DNS</label>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
+          <input type="color" id="pos-color-dns" value="#888888" oninput="onPosColorChange()" style="width:44px;height:36px;border:none;border-radius:6px;cursor:pointer;background:none;padding:0">
+          <span style="font-family:'Bebas Neue',cursive;font-size:22px;color:#888888" id="pos-color-dns-preview">DNS</span>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- ONGLETS DU REMOTE -->
   <div class="app-card">
@@ -509,6 +548,14 @@ async function loadState() {
           sel.insertBefore(opt, sel.firstChild); sel.value=app.fontFamily;
         }
         document.getElementById('font-preview').style.fontFamily = app.fontFamily;
+      }
+      if (app.posColors) {
+        const pc = app.posColors;
+        if (pc.normal) { document.getElementById('pos-color-normal').value = pc.normal; }
+        if (pc.dnf)    { document.getElementById('pos-color-dnf').value    = pc.dnf;    }
+        if (pc.dsq)    { document.getElementById('pos-color-dsq').value    = pc.dsq;    }
+        if (pc.dns)    { document.getElementById('pos-color-dns').value    = pc.dns;    }
+        onPosColorChange();
       }
     }
     refreshPosGrid();
@@ -772,17 +819,43 @@ function clearCustomFont() {
 // Supports 4 logo slots: left, left2, right, right2
 const logos = { left: null, left2: null, right: null, right2: null };
 
+function compressImage(dataUrl, maxW, maxH, quality, callback) {
+  const img = new Image();
+  img.onload = () => {
+    let w = img.width, h = img.height;
+    if (w > maxW || h > maxH) {
+      const ratio = Math.min(maxW / w, maxH / h);
+      w = Math.round(w * ratio);
+      h = Math.round(h * ratio);
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, w, h);
+    // Essaye WebP, fallback PNG pour les logos transparents
+    const out = canvas.toDataURL('image/webp', quality);
+    callback(out, w, h);
+  };
+  img.src = dataUrl;
+}
+
 function loadLogo(input, side) {
   const file = input.files[0]; if(!file) return;
   const reader = new FileReader();
   reader.onload = e => {
-    logos[side] = e.target.result;
-    const thumb = document.getElementById('logo-'+side+'-thumb');
-    const slot  = document.getElementById('logo-'+side+'-slot');
-    thumb.src = e.target.result;
-    slot.classList.add('has-logo');
-    const label = slot.querySelector('.logo-label');
-    label.textContent = file.name;
+    const rawData = e.target.result;
+    const sizeBefore = Math.round(rawData.length * 0.75 / 1024); // KB approx
+    // Compression : max 300×300px, qualité 0.82
+    compressImage(rawData, 300, 300, 0.82, (compressed, w, h) => {
+      const sizeAfter = Math.round(compressed.length * 0.75 / 1024);
+      logos[side] = compressed;
+      const thumb = document.getElementById('logo-'+side+'-thumb');
+      const slot  = document.getElementById('logo-'+side+'-slot');
+      thumb.src = compressed;
+      slot.classList.add('has-logo');
+      const label = slot.querySelector('.logo-label');
+      label.textContent = file.name + ' — ' + sizeAfter + ' KB (was ' + sizeBefore + ' KB)';
+    });
   };
   reader.readAsDataURL(file);
   input.value='';
@@ -796,6 +869,37 @@ function clearLogo(side) {
   slot.classList.remove('has-logo');
   slot.querySelector('.logo-label').textContent = 'Cliquer pour charger';
   document.getElementById('logo-'+side+'-file').value='';
+}
+
+// ════════════════════════════════════════
+//  COULEUR DES POSITIONS
+// ════════════════════════════════════════
+function onPosColorChange() {
+  const cn = document.getElementById('pos-color-normal').value;
+  const cd = document.getElementById('pos-color-dnf').value;
+  const cq = document.getElementById('pos-color-dsq').value;
+  const cs = document.getElementById('pos-color-dns').value;
+  // Preview
+  document.getElementById('pos-color-preview').style.color = cn;
+  document.getElementById('pos-color-dnf-preview').style.color = cd;
+  document.getElementById('pos-color-dsq-preview').style.color = cq;
+  document.getElementById('pos-color-dns-preview').style.color = cs;
+  // Applique aux CSS vars du remote pour les pos-sel et mini-pos
+  document.documentElement.style.setProperty('--pos-color-normal', cn);
+  document.documentElement.style.setProperty('--pos-color-dnf',    cd);
+  document.documentElement.style.setProperty('--pos-color-dsq',    cq);
+  document.documentElement.style.setProperty('--pos-color-dns',    cs);
+  // Refresh immédiat
+  refreshPosGrid();
+}
+
+function getPosColors() {
+  return {
+    normal: document.getElementById('pos-color-normal').value || '#f5c842',
+    dnf:    document.getElementById('pos-color-dnf').value    || '#ff6060',
+    dsq:    document.getElementById('pos-color-dsq').value    || '#ff9900',
+    dns:    document.getElementById('pos-color-dns').value    || '#888888',
+  };
 }
 
 // ════════════════════════════════════════
@@ -816,6 +920,7 @@ function getAppearance() {
     fontData:      customFontData || null,
     tickerFontSize: parseInt(document.getElementById('ticker-font-size').value) || 14,
     tickerPosSize:  parseInt(document.getElementById('ticker-pos-size').value)  || 16,
+    posColors:     getPosColors(),
     logoLeft:      logos.left   || null,
     logoLeft2:     logos.left2  || null,
     logoRight:     logos.right  || null,
@@ -972,6 +1077,15 @@ function importJSON(input) {
           const el = document.getElementById('ticker-pos-size');
           el.value = app.tickerPosSize;
           document.getElementById('ticker-pos-size-val').textContent = app.tickerPosSize + 'px';
+        }
+        // Couleurs positions
+        if (app.posColors) {
+          const pc = app.posColors;
+          if (pc.normal) { document.getElementById('pos-color-normal').value = pc.normal; }
+          if (pc.dnf)    { document.getElementById('pos-color-dnf').value    = pc.dnf;    }
+          if (pc.dsq)    { document.getElementById('pos-color-dsq').value    = pc.dsq;    }
+          if (pc.dns)    { document.getElementById('pos-color-dns').value    = pc.dns;    }
+          onPosColorChange();
         }
         // Logos
         ['left','left2','right','right2'].forEach(side => {
