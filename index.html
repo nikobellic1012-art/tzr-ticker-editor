@@ -35,8 +35,12 @@ html,body { min-height:100%; font-family:'Rajdhani',sans-serif; background:var(-
 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
 
 /* ── TABS ── */
+:root {
+  --tab-height: 44px;
+  --tab-font-size: 10px;
+}
 .tabs-bar { display:flex; background:#0a0f1a; border-bottom:1px solid var(--border); position:sticky; top:54px; z-index:15; }
-.tab { flex:1; padding:12px 8px; text-align:center; cursor:pointer; font-size:10px; font-weight:700; color:var(--muted); border-bottom:2px solid transparent; transition:all 0.2s; letter-spacing:0.8px; text-transform:uppercase; user-select:none; }
+.tab { flex:1; padding:0 8px; height:var(--tab-height); display:flex; align-items:center; justify-content:center; text-align:center; cursor:pointer; font-size:var(--tab-font-size); font-weight:700; color:var(--muted); border-bottom:2px solid transparent; transition:all 0.2s; letter-spacing:0.8px; text-transform:uppercase; user-select:none; }
 .tab.active { color:var(--gold); border-bottom-color:var(--gold); }
 .tab:hover:not(.active) { color:var(--text); background:rgba(255,255,255,0.03); }
 .tab-content { display:none; }
@@ -107,8 +111,8 @@ html,body { min-height:100%; font-family:'Rajdhani',sans-serif; background:var(-
 .font-preview { margin-top:8px; padding:10px 14px; background:var(--input); border:1px solid var(--border); border-radius:var(--r); font-size:16px; color:var(--text); letter-spacing:1px; text-align:center; transition:font-family 0.2s; }
 
 /* Logo upload area */
-.logo-area { display:flex; gap:10px; }
-.logo-slot { flex:1; display:flex; flex-direction:column; align-items:center; gap:8px; padding:14px 10px; background:var(--input); border:1px dashed rgba(255,255,255,0.12); border-radius:var(--r); cursor:pointer; transition:border-color 0.2s; position:relative; }
+.logo-area { display:flex; gap:10px; flex-wrap:wrap; }
+.logo-slot { flex:1; min-width:120px; display:flex; flex-direction:column; align-items:center; gap:8px; padding:14px 10px; background:var(--input); border:1px dashed rgba(255,255,255,0.12); border-radius:var(--r); cursor:pointer; transition:border-color 0.2s; position:relative; }
 .logo-slot:hover { border-color:rgba(245,200,66,0.35); }
 .logo-slot.has-logo { border-style:solid; border-color:rgba(245,200,66,0.3); background:rgba(245,200,66,0.04); }
 .logo-thumb { width:64px; height:44px; object-fit:contain; display:none; }
@@ -223,15 +227,34 @@ html,body { min-height:100%; font-family:'Rajdhani',sans-serif; background:var(-
 <div class="tab-content" id="tab-apparence">
 <div class="page">
 
-  <!-- POLICE -->
+  <!-- ONGLETS DU REMOTE -->
   <div class="app-card">
-    <div class="app-card-title">🔤 Police d'écriture</div>
+    <div class="app-card-title">📐 Taille des onglets (Remote)</div>
+    <div class="field">
+      <label>Hauteur des onglets</label>
+      <div class="logo-size-row" style="margin-top:0">
+        <input type="range" id="tab-height-range" min="28" max="72" value="44" oninput="onTabSizeChange()">
+        <span class="logo-size-val" id="tab-height-val">44px</span>
+      </div>
+    </div>
+    <div class="field">
+      <label>Taille du texte des onglets</label>
+      <div class="logo-size-row" style="margin-top:0">
+        <input type="range" id="tab-font-range" min="8" max="18" value="10" oninput="onTabSizeChange()">
+        <span class="logo-size-val" id="tab-font-val">10px</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- POLICE DU TICKER -->
+  <div class="app-card">
+    <div class="app-card-title">🔤 Police du Ticker (OBS)</div>
 
     <div class="field">
       <label>Police du ticker</label>
       <select id="font-select" onchange="onFontChange()">
         <option value="'Faster Stroker',sans-serif">Faster Stroker ★</option>
-      <option value="'Bebas Neue',cursive">Bebas Neue</option>
+        <option value="'Bebas Neue',cursive">Bebas Neue</option>
         <option value="'Rajdhani',sans-serif">Rajdhani</option>
         <option value="'Exo 2',sans-serif">Exo 2</option>
         <option value="'Oswald',sans-serif">Oswald</option>
@@ -240,6 +263,22 @@ html,body { min-height:100%; font-family:'Rajdhani',sans-serif; background:var(-
         <option value="'Arial Narrow',Arial,sans-serif">Arial Narrow</option>
         <option value="Arial,sans-serif">Arial</option>
       </select>
+    </div>
+
+    <div class="field">
+      <label>Taille de la police (noms pilotes)</label>
+      <div class="logo-size-row" style="margin-top:0">
+        <input type="range" id="ticker-font-size" min="10" max="32" value="14" oninput="document.getElementById('ticker-font-size-val').textContent=this.value+'px'">
+        <span class="logo-size-val" id="ticker-font-size-val">14px</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Taille de la position (chiffre)</label>
+      <div class="logo-size-row" style="margin-top:0">
+        <input type="range" id="ticker-pos-size" min="10" max="36" value="16" oninput="document.getElementById('ticker-pos-size-val').textContent=this.value+'px'">
+        <span class="logo-size-val" id="ticker-pos-size-val">16px</span>
+      </div>
     </div>
 
     <div class="font-preview" id="font-preview" style="font-family:'Faster Stroker',sans-serif">ZPR_Ganjy · TZR_Tornade · Itibou_Racing</div>
@@ -258,11 +297,13 @@ html,body { min-height:100%; font-family:'Rajdhani',sans-serif; background:var(-
   <!-- LOGOS -->
   <div class="app-card">
     <div class="app-card-title">🖼 Logos dans le header du ticker</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.6">Tu peux ajouter jusqu'à <strong style="color:var(--gold)">4 logos</strong> : 2 à gauche, 2 à droite.</div>
 
-    <div class="logo-area">
-      <!-- Logo gauche -->
+    <!-- Rangée logos gauche -->
+    <div style="font-size:10px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">◀ Logos Gauche</div>
+    <div class="logo-area" style="margin-bottom:14px">
       <div style="flex:1">
-        <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px">Logo gauche</div>
+        <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px">Gauche 1</div>
         <div class="logo-slot" id="logo-left-slot" onclick="document.getElementById('logo-left-file').click()">
           <div class="logo-placeholder">🖼</div>
           <img class="logo-thumb" id="logo-left-thumb" src="" alt="">
@@ -273,15 +314,35 @@ html,body { min-height:100%; font-family:'Rajdhani',sans-serif; background:var(-
           <button class="logo-clear" onclick="clearLogo('left');event.stopPropagation()">✕ Retirer</button>
         </div>
         <div class="logo-size-row">
-          <label>Hauteur</label>
+          <label>H</label>
           <input type="range" id="logo-left-h" min="16" max="56" value="26" oninput="document.getElementById('logo-left-hval').textContent=this.value+'px'">
           <span class="logo-size-val" id="logo-left-hval">26px</span>
         </div>
       </div>
-
-      <!-- Logo droite -->
       <div style="flex:1">
-        <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px">Logo droite</div>
+        <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px">Gauche 2</div>
+        <div class="logo-slot" id="logo-left2-slot" onclick="document.getElementById('logo-left2-file').click()">
+          <div class="logo-placeholder">🖼</div>
+          <img class="logo-thumb" id="logo-left2-thumb" src="" alt="">
+          <span class="logo-label">Cliquer pour charger</span>
+          <input type="file" id="logo-left2-file" accept="image/*" onchange="loadLogo(this,'left2')">
+        </div>
+        <div class="logo-actions" style="margin-top:6px">
+          <button class="logo-clear" onclick="clearLogo('left2');event.stopPropagation()">✕ Retirer</button>
+        </div>
+        <div class="logo-size-row">
+          <label>H</label>
+          <input type="range" id="logo-left2-h" min="16" max="56" value="26" oninput="document.getElementById('logo-left2-hval').textContent=this.value+'px'">
+          <span class="logo-size-val" id="logo-left2-hval">26px</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rangée logos droite -->
+    <div style="font-size:10px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Logos Droite ▶</div>
+    <div class="logo-area">
+      <div style="flex:1">
+        <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px">Droite 1</div>
         <div class="logo-slot" id="logo-right-slot" onclick="document.getElementById('logo-right-file').click()">
           <div class="logo-placeholder">🖼</div>
           <img class="logo-thumb" id="logo-right-thumb" src="" alt="">
@@ -292,15 +353,32 @@ html,body { min-height:100%; font-family:'Rajdhani',sans-serif; background:var(-
           <button class="logo-clear" onclick="clearLogo('right');event.stopPropagation()">✕ Retirer</button>
         </div>
         <div class="logo-size-row">
-          <label>Hauteur</label>
+          <label>H</label>
           <input type="range" id="logo-right-h" min="16" max="56" value="26" oninput="document.getElementById('logo-right-hval').textContent=this.value+'px'">
           <span class="logo-size-val" id="logo-right-hval">26px</span>
+        </div>
+      </div>
+      <div style="flex:1">
+        <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px">Droite 2</div>
+        <div class="logo-slot" id="logo-right2-slot" onclick="document.getElementById('logo-right2-file').click()">
+          <div class="logo-placeholder">🖼</div>
+          <img class="logo-thumb" id="logo-right2-thumb" src="" alt="">
+          <span class="logo-label">Cliquer pour charger</span>
+          <input type="file" id="logo-right2-file" accept="image/*" onchange="loadLogo(this,'right2')">
+        </div>
+        <div class="logo-actions" style="margin-top:6px">
+          <button class="logo-clear" onclick="clearLogo('right2');event.stopPropagation()">✕ Retirer</button>
+        </div>
+        <div class="logo-size-row">
+          <label>H</label>
+          <input type="range" id="logo-right2-h" min="16" max="56" value="26" oninput="document.getElementById('logo-right2-hval').textContent=this.value+'px'">
+          <span class="logo-size-val" id="logo-right2-hval">26px</span>
         </div>
       </div>
     </div>
 
     <div class="info-box" style="margin-top:12px">
-      <p>💡 Les logos apparaissent dans la barre colorée en haut du ticker. Formats recommandés : PNG transparent ou SVG. Les logos sont envoyés en base64 avec les données.</p>
+      <p>💡 Les logos apparaissent dans la barre du ticker. Formats recommandés : PNG transparent ou SVG.</p>
     </div>
   </div>
 
@@ -487,10 +565,15 @@ function addPilot(pos='1',name='',tri='',tyre='S',active=true) {
     <button class="del-btn" onclick="this.closest('.pilot-row').remove();refreshPosGrid()">✕</button>
   `;
   document.getElementById('pilots-list').appendChild(row);
+  // Live refresh when name or position changes
+  row.querySelector('.pos-sel').addEventListener('change', () => refreshPosGrid());
+  row.querySelector('.name-inp').addEventListener('input', () => refreshPosGrid());
+  refreshPosGrid();
 }
 function onPosChange(sel) {
   const v=sel.value;
   sel.className='pos-sel'+(posClass(v)?' '+posClass(v):'');
+  // Auto-refresh pos grid in real-time regardless of active tab
   refreshPosGrid();
 }
 function toggleActive(btn) {
@@ -600,7 +683,8 @@ function clearCustomFont() {
 // ════════════════════════════════════════
 //  APPARENCE — LOGOS
 // ════════════════════════════════════════
-const logos = { left: null, right: null };
+// Supports 4 logo slots: left, left2, right, right2
+const logos = { left: null, left2: null, right: null, right2: null };
 
 function loadLogo(input, side) {
   const file = input.files[0]; if(!file) return;
@@ -628,14 +712,32 @@ function clearLogo(side) {
   document.getElementById('logo-'+side+'-file').value='';
 }
 
+// ════════════════════════════════════════
+//  TAB SIZE CONTROLS
+// ════════════════════════════════════════
+function onTabSizeChange() {
+  const h  = document.getElementById('tab-height-range').value;
+  const fs = document.getElementById('tab-font-range').value;
+  document.getElementById('tab-height-val').textContent = h  + 'px';
+  document.getElementById('tab-font-val').textContent   = fs + 'px';
+  document.documentElement.style.setProperty('--tab-height',    h  + 'px');
+  document.documentElement.style.setProperty('--tab-font-size', fs + 'px');
+}
+
 function getAppearance() {
   return {
-    fontFamily:   document.getElementById('font-select').value,
-    fontData:     customFontData || null, // base64 de la police perso
-    logoLeft:     logos.left  || null,
-    logoRight:    logos.right || null,
-    logoLeftH:    parseInt(document.getElementById('logo-left-h').value)  || 26,
-    logoRightH:   parseInt(document.getElementById('logo-right-h').value) || 26,
+    fontFamily:    document.getElementById('font-select').value,
+    fontData:      customFontData || null,
+    tickerFontSize: parseInt(document.getElementById('ticker-font-size').value) || 14,
+    tickerPosSize:  parseInt(document.getElementById('ticker-pos-size').value)  || 16,
+    logoLeft:      logos.left   || null,
+    logoLeft2:     logos.left2  || null,
+    logoRight:     logos.right  || null,
+    logoRight2:    logos.right2 || null,
+    logoLeftH:     parseInt(document.getElementById('logo-left-h').value)   || 26,
+    logoLeft2H:    parseInt(document.getElementById('logo-left2-h').value)  || 26,
+    logoRightH:    parseInt(document.getElementById('logo-right-h').value)  || 26,
+    logoRight2H:   parseInt(document.getElementById('logo-right2-h').value) || 26,
   };
 }
 
