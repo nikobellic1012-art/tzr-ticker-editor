@@ -506,16 +506,21 @@ const db = firebase.database();
 const STATE_REF = db.ref('tzr/state');
 
 // ── SAUVEGARDE FIREBASE ───────────────────────────────
-async function saveState(payload) {
+async function saveState(payload, fullApp) {
   try {
-    // On ne sauvegarde pas les logos en base64 dans Firebase (trop volumineux)
-    // On sauvegarde une version allégée sans les données binaires des logos
+    const app = fullApp || payload.appearance || {};
+    // Pas de logos base64 dans Firebase (trop volumineux)
     const toSave = {
       pilots: payload.pilots,
       appearance: {
-        fontFamily: payload.appearance ? payload.appearance.fontFamily : null,
-        logoLeftH:  payload.appearance ? payload.appearance.logoLeftH  : 26,
-        logoRightH: payload.appearance ? payload.appearance.logoRightH : 26,
+        fontFamily:     app.fontFamily    || null,
+        tickerFontSize: app.tickerFontSize || 14,
+        tickerPosSize:  app.tickerPosSize  || 16,
+        posColors:      app.posColors      || null,
+        logoLeftH:      app.logoLeftH      || 26,
+        logoLeft2H:     app.logoLeft2H     || 26,
+        logoRightH:     app.logoRightH     || 26,
+        logoRight2H:    app.logoRight2H    || 26,
       },
       ts: payload.ts
     };
@@ -590,11 +595,50 @@ async function sendNow() {
   if (!ablyReady) { setSendStatus('Non connecté','err'); return; }
   setSendStatus('Envoi…','sending');
   try {
-    const payload = { pilots:getPilots(), appearance:getAppearance(), ts:Date.now() };
-    await ablyChannel.publish('update', payload); // temps réel → OBS
-    await saveState(payload);                      // persistance → Firebase
-    setSendStatus('✓ Envoyé & sauvegardé — '+new Date().toLocaleTimeString('fr-FR'),'ok');
-  } catch(e) { setSendStatus('✗ '+e.message,'err'); }
+    const app = getAppearance();
+    const KB = obj => Math.round(JSON.stringify(obj).length / 1024);
+
+    // ── 1. Message principal : pilotes + apparence SANS logos ni police base64 ──
+    const appLight = Object.assign({}, app, {
+      logoLeft: null, logoLeft2: null, logoRight: null, logoRight2: null,
+      fontData: null  // la police perso part dans son propre message
+    });
+    const payload = { pilots: getPilots(), appearance: appLight, ts: Date.now() };
+    if (KB(payload) > 62) {
+      setSendStatus('✗ Trop de pilotes/données dans le message principal ('+KB(payload)+'KB)','err');
+      return;
+    }
+    await ablyChannel.publish('update', payload);
+
+    // ── 2. Police personnalisée (souvent volumineuse) : message séparé ──
+    if (app.fontData) {
+      const fontMsg = { fontFamily: app.fontFamily, fontData: app.fontData, ts: Date.now() };
+      if (KB(fontMsg) > 62) {
+        setSendStatus('⚠ Police trop lourde ('+KB(fontMsg)+'KB), non envoyée. Pilotes OK.','err');
+      } else {
+        await ablyChannel.publish('font', fontMsg);
+      }
+    }
+
+    // ── 3. Logos : TOUJOURS un message par logo (jamais groupés) ──
+    let sentLogos = 0, skipped = 0;
+    for (const side of ['Left','Left2','Right','Right2']) {
+      const key = 'logo'+side;
+      if (!app[key]) continue;
+      const single = { [key]: app[key], [key+'H']: app[key+'H'], ts: Date.now() };
+      const sz = KB(single);
+      if (sz > 62) { skipped++; continue; } // sécurité : on saute si trop gros
+      await ablyChannel.publish('logos', single);
+      sentLogos++;
+    }
+
+    await saveState(payload, app);
+
+    let msg = '✓ Envoyé — '+new Date().toLocaleTimeString('fr-FR');
+    if (sentLogos) msg += ' · '+sentLogos+' logo(s)';
+    if (skipped)   msg += ' · ⚠ '+skipped+' logo(s) trop lourd(s) ignoré(s)';
+    setSendStatus(msg, skipped ? 'err' : 'ok');
+  } catch(e) { setSendStatus('✗ Erreur : '+e.message,'err'); console.error('sendNow error:', e); }
 }
 
 function setSendStatus(msg,state) {
@@ -819,23 +863,63 @@ function clearCustomFont() {
 // Supports 4 logo slots: left, left2, right, right2
 const logos = { left: null, left2: null, right: null, right2: null };
 
-function compressImage(dataUrl, maxW, maxH, quality, callback) {
+// Compresse une image pour qu'elle tienne sous `targetKB` (base64).
+// Réduit progressivement la dimension puis la qualité WebP jusqu'à atteindre la cible.
+function compressImage(dataUrl, maxDim, targetKB, callback) {
   const img = new Image();
   img.onload = () => {
-    let w = img.width, h = img.height;
-    if (w > maxW || h > maxH) {
-      const ratio = Math.min(maxW / w, maxH / h);
-      w = Math.round(w * ratio);
-      h = Math.round(h * ratio);
+    // Détecter la transparence sur un petit canvas d'échantillon
+    const probe = document.createElement('canvas');
+    const pw = Math.min(img.width, 64), ph = Math.min(img.height, 64);
+    probe.width = pw; probe.height = ph;
+    const pctx = probe.getContext('2d');
+    pctx.clearRect(0,0,pw,ph);
+    pctx.drawImage(img, 0, 0, pw, ph);
+    let hasAlpha = false;
+    try {
+      const px = pctx.getImageData(0,0,pw,ph).data;
+      for (let i = 3; i < px.length; i += 4) { if (px[i] < 250) { hasAlpha = true; break; } }
+    } catch(e) {}
+
+    const sizeKB = (str) => Math.round(str.length * 0.75 / 1024);
+
+    // Fonction qui rend l'image à une dimension + qualité données
+    function renderAt(dim, quality, useWebp) {
+      let w = img.width, h = img.height;
+      if (w > dim || h > dim) {
+        const r = Math.min(dim / w, dim / h);
+        w = Math.max(1, Math.round(w * r));
+        h = Math.max(1, Math.round(h * r));
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+      // WebP supporte la transparence ET la compression lossy -> idéal pour rester léger
+      const fmt = useWebp ? 'image/webp' : (hasAlpha ? 'image/png' : 'image/jpeg');
+      return canvas.toDataURL(fmt, quality);
     }
-    const canvas = document.createElement('canvas');
-    canvas.width = w; canvas.height = h;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(img, 0, 0, w, h);
-    // Essaye WebP, fallback PNG pour les logos transparents
-    const out = canvas.toDataURL('image/webp', quality);
-    callback(out, w, h);
+
+    // Stratégie : WebP (gère alpha + lossy). On baisse dimension puis qualité.
+    const dims     = [maxDim, 200, 160, 128, 96, 64];
+    const qualities= [0.85, 0.7, 0.55, 0.4, 0.3];
+    let best = null;
+
+    for (const dim of dims) {
+      for (const q of qualities) {
+        const out = renderAt(dim, q, true); // WebP
+        best = out;
+        if (sizeKB(out) <= targetKB) {
+          callback(out, sizeKB(out), 'WebP', hasAlpha);
+          return;
+        }
+      }
+    }
+    // Si même au plus petit on ne passe pas, on renvoie le plus petit obtenu
+    callback(best, sizeKB(best), 'WebP', hasAlpha);
   };
+  img.onerror = () => callback(dataUrl, Math.round(dataUrl.length*0.75/1024), 'brut', false);
   img.src = dataUrl;
 }
 
@@ -844,17 +928,19 @@ function loadLogo(input, side) {
   const reader = new FileReader();
   reader.onload = e => {
     const rawData = e.target.result;
-    const sizeBefore = Math.round(rawData.length * 0.75 / 1024); // KB approx
-    // Compression : max 300×300px, qualité 0.82
-    compressImage(rawData, 300, 300, 0.82, (compressed, w, h) => {
-      const sizeAfter = Math.round(compressed.length * 0.75 / 1024);
+    const sizeBefore = Math.round(rawData.length * 0.75 / 1024);
+    const slot  = document.getElementById('logo-'+side+'-slot');
+    const label = slot.querySelector('.logo-label');
+    label.textContent = 'Compression…';
+    // Cible : 40KB max par logo -> 4 logos = 160KB répartis sur messages séparés,
+    // chacun bien en dessous de la limite Ably de 64KB.
+    compressImage(rawData, 256, 40, (compressed, sizeAfter, fmt, hasAlpha) => {
       logos[side] = compressed;
       const thumb = document.getElementById('logo-'+side+'-thumb');
-      const slot  = document.getElementById('logo-'+side+'-slot');
       thumb.src = compressed;
       slot.classList.add('has-logo');
-      const label = slot.querySelector('.logo-label');
-      label.textContent = file.name + ' — ' + sizeAfter + ' KB (was ' + sizeBefore + ' KB)';
+      const alphaTag = hasAlpha ? ' ✓transp.' : '';
+      label.textContent = file.name + ' · ' + sizeAfter + 'KB' + alphaTag + ' (était ' + sizeBefore + 'KB)';
     });
   };
   reader.readAsDataURL(file);
